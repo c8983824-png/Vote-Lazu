@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoteX - Real-Time Multi-Device Voting System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.7);
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans selection:bg-brand-500 selection:text-white antialiased custom-scrollbar">
+
+    <!-- Notification Toast Container -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- MAIN NAVBAR -->
+    <header class="sticky top-0 z-30 glass-panel border-b border-slate-800/80 px-4 lg:px-8 py-3 transition-all">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <!-- Brand Logo -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="resetToStep(1)">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center shadow-lg shadow-brand-500/20">
+                    <i class="fa-solid font-bold text-xl text-white fa-check-to-slot"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-brand-400">
+                        VoteX
+                    </span>
+                    <span class="hidden sm:inline-block text-xs text-slate-400 block -mt-1 font-medium">Real-Time Cloud Voting</span>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center gap-3">
+                <!-- Sync Badge -->
+                <div id="syncBadge" class="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700/50 text-xs font-medium text-slate-300">
+                    <span id="syncDot" class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    <span id="syncStatusText">Connecting Cloud...</span>
+                </div>
+
+                <!-- Firebase Config Button -->
+                <button onclick="openConfigModal()" title="Configure Firebase Connection" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-semibold transition-all">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+
+                <!-- Admin Action Button -->
+                <button id="adminBtn" onclick="openAdminModal()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold border border-slate-700/80 transition-all duration-200 active:scale-95 shadow-md">
+                    <i class="fa-solid fa-user-shield text-brand-400"></i>
+                    <span id="adminBtnText">Admin Portal</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- STEP PROGRESS BAR -->
+    <div class="w-full bg-slate-950/40 border-b border-slate-800/40 py-2.5 px-4">
+        <div class="max-w-xl mx-auto flex items-center justify-between text-xs font-medium text-slate-400">
+            <div id="step1Indicator" class="flex items-center gap-1.5 text-brand-400 font-semibold">
+                <span class="w-5 h-5 rounded-full bg-brand-600/30 border border-brand-500 text-brand-400 flex items-center justify-center text-[10px]">1</span>
+                <span>Register</span>
+            </div>
+            <div class="h-[1px] flex-1 bg-slate-800 mx-3"></div>
+            <div id="step2Indicator" class="flex items-center gap-1.5 text-slate-500">
+                <span class="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px]">2</span>
+                <span>Confirm</span>
+            </div>
+            <div class="h-[1px] flex-1 bg-slate-800 mx-3"></div>
+            <div id="step3Indicator" class="flex items-center gap-1.5 text-slate-500">
+                <span class="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px]">3</span>
+                <span>Vote</span>
+            </div>
+            <div class="h-[1px] flex-1 bg-slate-800 mx-3"></div>
+            <div id="step4Indicator" class="flex items-center gap-1.5 text-slate-500">
+                <span class="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px]">4</span>
+                <span>Results</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col justify-center items-center">
+
+        <!-- ================= STEP 1: REGISTRATION ================= -->
+        <section id="step1" class="w-full max-w-md transition-all duration-300">
+            <div class="glass-panel p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-800 relative overflow-hidden">
+                <div class="absolute -top-24 -right-24 w-48 h-48 bg-brand-600/20 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <div class="text-center mb-8">
+                    <div class="w-16 h-16 bg-brand-500/10 border border-brand-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-brand-400 text-2xl shadow-inner">
+                        <i class="fa-solid fa-id-card"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-white tracking-tight">Voter Verification</h1>
+                    <p class="text-slate-400 text-sm mt-1">Enter your legal full name to begin multi-step voting.</p>
+                </div>
+
+                <form onsubmit="handleStep1Submit(event)" class="space-y-5">
+                    <div>
+                        <label for="voterName" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                            Full Name <span class="text-rose-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                                <i class="fa-solid fa-user"></i>
+                            </span>
+                            <input type="text" id="voterName" required
+                                placeholder="e.g. Eleanor Vance" 
+                                class="w-full pl-10 pr-4 py-3 bg-slate-900/90 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 transition-all text-sm font-medium">
+                        </div>
+                        <p id="nameError" class="text-rose-400 text-xs mt-2 hidden flex items-center gap-1">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <span id="nameErrorMsg">Please enter a valid full name.</span>
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-950/50 rounded-xl p-3.5 border border-slate-800/80 flex items-start gap-3">
+                        <i class="fa-solid fa-cloud-arrow-up text-brand-400 text-base mt-0.5"></i>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Your vote will be logged in real-time to Cloud Firestore to enforce a <strong>one-vote-per-person</strong> policy across all devices.
+                        </p>
+                    </div>
+
+                    <button type="submit" id="btnStep1Next"
+                        class="w-full py-3.5 px-4 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold rounded-xl shadow-lg shadow-brand-600/30 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2">
+                        <span>Continue to Verification</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ================= STEP 2: WARNING / CONFIRMATION ================= -->
+        <section id="step2" class="w-full max-w-md hidden transition-all duration-300">
+            <div class="glass-panel p-6 sm:p-8 rounded-3xl shadow-2xl border border-amber-500/20 relative overflow-hidden">
+                <div class="absolute -top-20 -right-20 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-400 text-2xl shadow-inner">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <span class="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold tracking-wide uppercase">
+                        Confirmation Required
+                    </span>
+                    <h2 class="text-2xl font-bold text-white tracking-tight mt-3">Are you sure?</h2>
+                </div>
+
+                <div class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 mb-6 space-y-3">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                        <span class="text-xs text-slate-400">Registered Voter:</span>
+                        <span id="confirmVoterName" class="text-sm font-bold text-brand-400">--</span>
+                    </div>
+                    <div class="space-y-2 text-xs text-slate-300 leading-relaxed">
+                        <p class="flex items-start gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-400 mt-0.5"></i>
+                            <span>You are entering the official secure live ballot.</span>
+                        </p>
+                        <p class="flex items-start gap-2">
+                            <i class="fa-solid fa-lock text-amber-400 mt-0.5"></i>
+                            <span>Votes are <strong>final</strong> and immediately synced across all devices.</span>
+                        </p>
+                        <p class="flex items-start gap-2">
+                            <i class="fa-solid fa-fingerprint text-brand-400 mt-0.5"></i>
+                            <span>Your name will be locked in the central cloud register.</span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button type="button" onclick="goToStep(1)" 
+                        class="w-full sm:w-1/3 py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl border border-slate-700 transition-all text-xs active:scale-95">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Edit Name
+                    </button>
+                    <button type="button" onclick="goToStep(3)" 
+                        class="w-full sm:w-2/3 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/25 transition-all text-xs active:scale-95 flex items-center justify-center gap-2">
+                        <span>Yes, Proceed to Vote</span>
+                        <i class="fa-solid fa-check"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= STEP 3: VOTING BALLOT PAGE ================= -->
+        <section id="step3" class="w-full max-w-5xl hidden transition-all duration-300">
+            <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 glass-panel p-6 rounded-2xl border border-slate-800">
+                <div>
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                        <span>Official Cloud Election Ballot</span>
+                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-normal flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Live Sync
+                        </span>
+                    </h2>
+                    <p class="text-sm text-slate-400 mt-0.5">Welcome, <strong id="ballotVoterDisplay" class="text-slate-200">Voter</strong>! Select your candidate below.</p>
+                </div>
+                <div class="text-xs text-slate-400 bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-800 flex items-center gap-2 self-start md:self-auto">
+                    <i class="fa-solid fa-circle-info text-brand-400"></i>
+                    <span>Click a candidate card and click <strong>Submit Vote</strong>.</span>
+                </div>
+            </div>
+
+            <!-- Candidates Grid -->
+            <div id="candidatesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Dynamically Rendered Candidates -->
+            </div>
+
+            <!-- Ballot Actions Footer -->
+            <div class="glass-panel p-4 sm:p-6 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-4 z-20 shadow-2xl">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
+                        <i class="fa-solid fa-check-double"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 block">Selected Choice</span>
+                        <span id="selectedCandidateName" class="text-sm font-bold text-emerald-400">None Selected</span>
+                    </div>
+                </div>
+
+                <button id="submitVoteBtn" onclick="confirmAndCastVote()" disabled
+                    class="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-500 hover:to-teal-500 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 transition-all duration-200 active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>Submit Live Vote</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= STEP 4: SUCCESS & LIVE RESULTS ================= -->
+        <section id="step4" class="w-full max-w-4xl hidden transition-all duration-300">
+            <div class="glass-panel p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-800 mb-6 text-center relative overflow-hidden">
+                <div class="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4 text-emerald-400 text-3xl shadow-inner">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <h2 class="text-3xl font-extrabold text-white tracking-tight">Vote Synchronized!</h2>
+                <p class="text-slate-400 text-sm max-w-md mx-auto mt-2">
+                    Thank you, <span id="successVoterName" class="text-brand-300 font-semibold">Voter</span>. Your choice is recorded live in Firebase Firestore.
+                </p>
+
+                <div class="mt-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-400">
+                    <i class="fa-solid fa-chart-pie text-brand-400"></i>
+                    <span>Live Cross-Device Results Standings</span>
+                </div>
+            </div>
+
+            <!-- Election Progress & Breakdown Card -->
+            <div class="glass-panel p-6 sm:p-8 rounded-3xl shadow-2xl border border-slate-800 space-y-6">
+                <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <span>Real-Time Leaderboard</span>
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Live tally across all online voters</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-slate-400 block">Total Votes Cast</span>
+                        <span id="totalVotesCount" class="text-xl font-extrabold text-brand-400">0</span>
+                    </div>
+                </div>
+
+                <!-- Results Bars Dynamic List -->
+                <div id="resultsList" class="space-y-5">
+                    <!-- Dynamically populated -->
+                </div>
+
+                <div class="pt-4 border-t border-slate-800 flex justify-center">
+                    <button onclick="resetToStep(1)" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl border border-slate-700 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>Register Another Voter</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="glass-panel border-t border-slate-800/80 py-4 px-4 text-center text-xs text-slate-500 mt-auto">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div>&copy; 2026 VoteX Cloud Platform. Firebase Live Sync Active.</div>
+            <div class="flex items-center gap-4">
+                <span class="hover:text-slate-400 cursor-pointer" onclick="openConfigModal()">Firebase Config</span>
+                <span>•</span>
+                <span class="hover:text-slate-400 cursor-pointer" onclick="openAdminModal()">Admin Access</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ================= FIREBASE CONFIG MODAL ================= -->
+    <div id="configModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="glass-panel max-w-lg w-full p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl relative">
+            <button onclick="closeConfigModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 bg-brand-500/10 border border-brand-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3 text-brand-400 text-2xl">
+                    <i class="fa-solid fa-fire"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">Firebase Project Setup</h3>
+                <p class="text-xs text-slate-400 mt-1">Provide custom Firebase Web Credentials to link your own live cloud database.</p>
+            </div>
+
+            <form onsubmit="handleSaveConfig(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-300 mb-1">Paste Entire JSON or JS Config Snippet</label>
+                    <textarea id="configJsonInput" rows="5" placeholder='{\n  "apiKey": "AIzaSy...",\n  "authDomain": "my-app.firebaseapp.com",\n  "projectId": "my-app",\n  "storageBucket": "my-app.appspot.com",\n  "messagingSenderId": "12345",\n  "appId": "1:123:web:abc"\n}' 
+                        class="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-slate-200 font-mono text-[11px] focus:outline-none focus:border-brand-500"></textarea>
+                </div>
+                <p class="text-[11px] text-slate-400">
+                    <i class="fa-solid fa-circle-info text-brand-400 mr-1"></i>
+                    This config will be saved in local storage so you can easily deploy to GitHub Pages!
+                </p>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="restoreDefaultConfig()" class="w-1/2 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl border border-slate-700">
+                        Reset Default
+                    </button>
+                    <button type="submit" class="w-1/2 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl shadow-lg shadow-brand-600/30">
+                        Apply & Connect
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= ADMIN LOGIN MODAL ================= -->
+    <div id="adminLoginModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="glass-panel max-w-md w-full p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl relative">
+            <button onclick="closeAdminModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 bg-brand-500/10 border border-brand-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3 text-brand-400 text-2xl">
+                    <i class="fa-solid fa-user-lock"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">Admin Authentication</h3>
+                <p class="text-xs text-slate-400 mt-1">Enter administrative passcode to manage real-time ballot.</p>
+            </div>
+
+            <div class="bg-indigo-950/40 border border-indigo-500/30 rounded-xl p-3 mb-5 text-xs text-indigo-300">
+                <div class="font-semibold text-indigo-200 mb-1"><i class="fa-solid fa-key mr-1"></i> Default Admin Passcode:</div>
+                <div class="flex justify-between text-[11px]">
+                    <span>Passcode: <code class="bg-indigo-900/60 px-1.5 py-0.5 rounded text-white">admin123</code></span>
+                </div>
+            </div>
+
+            <form onsubmit="handleAdminLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Passcode</label>
+                    <input type="password" id="adminPass" required value="admin123" 
+                        class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-brand-500">
+                </div>
+
+                <p id="adminLoginError" class="text-rose-400 text-xs hidden flex items-center gap-1">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>Invalid passcode. Try "admin123"</span>
+                </p>
+
+                <button type="submit" class="w-full py-3 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-sm transition-all shadow-lg shadow-brand-600/30">
+                    Log In to Control Panel
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MAIN ADMIN DASHBOARD MODAL ================= -->
+    <div id="adminDashboardModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 hidden">
+        <div class="glass-panel max-w-5xl w-full h-[90vh] rounded-3xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden">
+            
+            <!-- Dashboard Header -->
+            <div class="px-6 py-4 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-500/20 border border-brand-500/30 flex items-center justify-center text-brand-400">
+                        <i class="fa-solid fa-sliders text-lg"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Election Control Panel</h3>
+                        <p class="text-xs text-slate-400">Live Firebase Cloud Synchronization Active</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="logoutAdmin()" class="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold border border-rose-500/20 transition-all">
+                        <i class="fa-solid fa-right-from-bracket mr-1"></i> Exit Admin
+                    </button>
+                </div>
+            </div>
+
+            <!-- Admin Tabs Navigation -->
+            <div class="flex border-b border-slate-800 bg-slate-950/40 px-6">
+                <button id="tabBtnCandidates" onclick="switchAdminTab('candidates')" class="py-3 px-4 text-xs font-semibold text-brand-400 border-b-2 border-brand-500 flex items-center gap-2">
+                    <i class="fa-solid fa-users text-sm"></i> Candidate Management
+                </button>
+                <button id="tabBtnVoters" onclick="switchAdminTab('voters')" class="py-3 px-4 text-xs font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-list text-sm"></i> Real-Time Audit Log
+                </button>
+            </div>
+
+            <!-- Admin Content Area -->
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+
+                <!-- TAB 1: CANDIDATES MANAGEMENT -->
+                <div id="tabCandidates" class="space-y-6">
+                    <!-- Add Candidate Form Block -->
+                    <div class="bg-slate-900/90 rounded-2xl p-5 border border-slate-800">
+                        <h4 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-plus-circle text-brand-400"></i>
+                            <span>Add New Candidate (Syncs to Cloud)</span>
+                        </h4>
+                        <form onsubmit="handleCreateCandidate(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
+                                <input type="text" id="newCandName" required placeholder="e.g. Dr. Aris Thorne"
+                                    class="w-full px-3.5 py-2 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-brand-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Position / Office</label>
+                                <input type="text" id="newCandRole" required placeholder="e.g. Council President"
+                                    class="w-full px-3.5 py-2 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-brand-500">
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Photo Avatar / Image URL</label>
+                                <input type="url" id="newCandPhoto" placeholder="https://images.unsplash.com/... or leave empty for auto avatar"
+                                    class="w-full px-3.5 py-2 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-brand-500">
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Short Platform / Biography</label>
+                                <textarea id="newCandBio" rows="2" required placeholder="Brief description of goals and background..."
+                                    class="w-full px-3.5 py-2 bg-slate-950 border border-slate-700/80 rounded-xl text-white text-xs focus:outline-none focus:border-brand-500 resize-none"></textarea>
+                            </div>
+
+                            <div class="md:col-span-2 flex justify-end">
+                                <button type="submit" id="btnAddCandSubmit" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs transition-all shadow-md flex items-center gap-2">
+                                    <i class="fa-solid fa-user-plus"></i> Save Candidate to Firebase
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Existing Candidates Table -->
+                    <div>
+                        <h4 class="text-sm font-bold text-white mb-3">Live Synced Candidates</h4>
+                        <div class="bg-slate-900/60 rounded-2xl border border-slate-800 overflow-hidden">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-xs">
+                                    <thead class="bg-slate-950/70 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider">
+                                        <tr>
+                                            <th class="px-4 py-3">Candidate</th>
+                                            <th class="px-4 py-3">Role</th>
+                                            <th class="px-4 py-3">Bio</th>
+                                            <th class="px-4 py-3 text-center">Cloud Votes</th>
+                                            <th class="px-4 py-3 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminCandidatesTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                                        <!-- Dynamically populated -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: VOTER AUDIT LOG -->
+                <div id="tabVoters" class="space-y-4 hidden">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-sm font-bold text-white">Cloud Audit Log (Live Sync)</h4>
+                    </div>
+
+                    <div class="bg-slate-900/60 rounded-2xl border border-slate-800 overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-950/70 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-4 py-3">#</th>
+                                        <th class="px-4 py-3">Voter Name</th>
+                                        <th class="px-4 py-3">Voted For Candidate</th>
+                                        <th class="px-4 py-3 text-right">Timestamp</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminVoterLogBody" class="divide-y divide-slate-800/60 text-slate-300">
+                                    <!-- Dynamically populated -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Dashboard Footer Actions -->
+            <div class="px-6 py-3 border-t border-slate-800 bg-slate-900/90 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="text-slate-400">
+                    <span>Admin Mode Active</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="resetElectionDataPrompt()" class="px-3 py-1.5 bg-rose-900/30 hover:bg-rose-900/50 text-rose-300 border border-rose-800/60 rounded-xl font-medium transition-all">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> Reset Election & Clear Votes
+                    </button>
+                    <button onclick="closeAdminDashboard()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition-all">
+                        Close Panel
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ================= FIREBASE MODULE SCRIPT ================= -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // APP CONFIG & INITIALIZATION
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'votex-global-app';
+
+        // Default Config Fallback
+        const defaultFirebaseConfig = {
+            apiKey: "AIzaSyDemoDummyKeyForVotexVotingApp12345",
+            authDomain: "votex-voting-system.firebaseapp.com",
+            projectId: "votex-voting-system",
+            storageBucket: "votex-voting-system.appspot.com",
+            messagingSenderId: "1029384756",
+            appId: "1:1029384756:web:a1b2c3d4e5f6"
+        };
+
+        let firebaseConfig = defaultFirebaseConfig;
+        
+        // Load custom config from local storage if existing
+        const storedConfig = localStorage.getItem('votex_custom_firebase_config');
+        if (storedConfig) {
+            try {
+                firebaseConfig = JSON.parse(storedConfig);
+            } catch(e) {
+                console.warn("Invalid stored config, using fallback");
+            }
+        } else if (typeof __firebase_config !== 'undefined') {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+            } catch(e) {}
+        }
+
+        // Initialize Firebase
+        let app, db, auth;
+        let isCloudConnected = false;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        } catch(e) {
+            console.error("Firebase init failed", e);
+        }
+
+        // Global Application State
+        window.currentStep = 1;
+        window.currentVoter = '';
+        window.selectedCandidateId = null;
+        window.isAdminLoggedIn = false;
+        window.candidates = [];
+        window.voterLogs = [];
+        window.dbUser = null;
+
+        // Firebase Collection Paths (Strict Rules)
+        const candidatesCollectionRef = () => collection(db, 'artifacts', appId, 'public', 'data', 'candidates');
+        const votesCollectionRef = () => collection(db, 'artifacts', appId, 'public', 'data', 'votes');
+
+        // Startup Initialization
+        window.addEventListener('load', async () => {
+            updateStepView(1);
+            await authenticateFirebase();
+            subscribeRealtimeData();
+        });
+
+        // AUTHENTICATION PROTOCOL
+        async function authenticateFirebase() {
+            updateSyncStatus('connecting');
+            try {
+                let userCredential;
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    userCredential = await signInAnonymously(auth);
+                }
+                window.dbUser = userCredential.user;
+                updateSyncStatus('connected');
+            } catch (error) {
+                console.error("Auth error:", error);
+                updateSyncStatus('error');
+            }
+        }
+
+        function updateSyncStatus(state) {
+            const dot = document.getElementById('syncDot');
+            const txt = document.getElementById('syncStatusText');
+            if (state === 'connected') {
+                isCloudConnected = true;
+                dot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+                txt.innerText = "Cloud Synced";
+            } else if (state === 'connecting') {
+                dot.className = "w-2 h-2 rounded-full bg-amber-400 animate-ping";
+                txt.innerText = "Connecting Cloud...";
+            } else {
+                isCloudConnected = false;
+                dot.className = "w-2 h-2 rounded-full bg-rose-500";
+                txt.innerText = "Offline / Auth Warning";
+            }
+        }
+
+        // REAL-TIME FIRESTORE LISTENERS
+        function subscribeRealtimeData() {
+            if (!db) return;
+
+            // 1. Listen to Candidates
+            onSnapshot(candidatesCollectionRef(), (snapshot) => {
+                const list = [];
+                snapshot.forEach(docSnap => {
+                    list.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                // If collection is completely empty, populate default candidates into Firestore
+                if (list.length === 0 && window.isAdminLoggedIn) {
+                    seedDefaultCandidates();
+                } else {
+                    window.candidates = list;
+                    refreshActiveViews();
+                }
+            }, (err) => {
+                console.error("Candidates listener error:", err);
+                showToast("Cloud connection error. Check Firebase Config.", "error");
+            });
+
+            // 2. Listen to Votes Log
+            onSnapshot(votesCollectionRef(), (snapshot) => {
+                const logs = [];
+                snapshot.forEach(docSnap => {
+                    logs.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                window.voterLogs = logs;
+                refreshActiveViews();
+            }, (err) => {
+                console.error("Votes listener error:", err);
+            });
+        }
+
+        async function seedDefaultCandidates() {
+            const defaults = [
+                {
+                    name: 'Elena Rostova',
+                    role: 'Technology & Innovation Lead',
+                    bio: 'Advocating for transparent digital infrastructure, open data standards, and AI security compliance.',
+                    photo: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=400',
+                    votes: 14
+                },
+                {
+                    name: 'Marcus Vance',
+                    role: 'Sustainability Lead',
+                    bio: 'Focused on renewable energy initiatives, green space development, and carbon-neutral policies.',
+                    photo: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=400',
+                    votes: 9
+                },
+                {
+                    name: 'Sophia Chen',
+                    role: 'Community Development Head',
+                    bio: 'Championing accessible healthcare, youth education programs, and inclusive community centers.',
+                    photo: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=400',
+                    votes: 18
+                }
+            ];
+
+            for (const cand of defaults) {
+                await addDoc(candidatesCollectionRef(), cand);
+            }
+        }
+
+        function refreshActiveViews() {
+            if (window.currentStep === 3) renderCandidatesGrid();
+            if (window.currentStep === 4) renderResultsView();
+            if (window.isAdminLoggedIn) {
+                renderAdminCandidatesTable();
+                renderAdminVoterLogs();
+            }
+        }
+
+        // STEP 1 REGISTRATION
+        window.handleStep1Submit = async function(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('voterName');
+            const nameErr = document.getElementById('nameError');
+            const nameErrMsg = document.getElementById('nameErrorMsg');
+            const trimmedName = nameInput.value.trim();
+
+            if (!trimmedName || trimmedName.length < 2) {
+                nameErrMsg.innerText = "Please enter a valid full name (minimum 2 characters).";
+                nameErr.classList.remove('hidden');
+                return;
+            }
+
+            // Real-Time Validation: Check if voter already cast a vote in Firestore
+            const alreadyVoted = window.voterLogs.some(v => v.voterName.toLowerCase() === trimmedName.toLowerCase());
+            if (alreadyVoted) {
+                showToast(`Warning: "${trimmedName}" has already cast a vote!`, "error");
+                nameErrMsg.innerText = `This voter (${trimmedName}) has already submitted a ballot. Multi-voting is restricted.`;
+                nameErr.classList.remove('hidden');
+                return;
+            }
+
+            nameErr.classList.add('hidden');
+            window.currentVoter = trimmedName;
+
+            document.getElementById('confirmVoterName').innerText = window.currentVoter;
+            goToStep(2);
+        };
+
+        // STEP 3 BALLOT LOGIC
+        window.renderCandidatesGrid = function() {
+            const grid = document.getElementById('candidatesGrid');
+            document.getElementById('ballotVoterDisplay').innerText = window.currentVoter;
+
+            if (window.candidates.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full glass-panel p-8 text-center rounded-2xl border border-slate-800">
+                        <i class="fa-solid fa-users-slash text-4xl text-slate-600 mb-3"></i>
+                        <h4 class="text-lg font-bold text-slate-300">No Candidates Available</h4>
+                        <p class="text-xs text-slate-400 mt-1">Please ask an administrator to add candidates to the ballot.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = window.candidates.map(cand => {
+                const isSelected = window.selectedCandidateId === cand.id;
+                const avatarUrl = cand.photo && cand.photo.trim() !== '' 
+                    ? cand.photo 
+                    : `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cand.name)}`;
+
+                return `
+                    <div onclick="selectCandidate('${cand.id}')" 
+                        class="glass-panel rounded-2xl p-5 border transition-all duration-200 cursor-pointer relative flex flex-col justify-between group ${
+                            isSelected 
+                                ? 'border-brand-500 bg-brand-950/20 shadow-xl shadow-brand-500/10 ring-2 ring-brand-500/30' 
+                                : 'border-slate-800 hover:border-slate-700 bg-slate-900/60'
+                        }">
+                        
+                        <div class="absolute top-4 right-4">
+                            <div class="w-6 h-6 rounded-full border flex items-center justify-center transition-all ${
+                                isSelected ? 'border-brand-500 bg-brand-600 text-white' : 'border-slate-700 bg-slate-900'
+                            }">
+                                ${isSelected ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center gap-4 mb-4">
+                                <img src="${avatarUrl}" alt="${cand.name}" 
+                                    onerror="this.src='https://placehold.co/100x100/1e293b/818cf8?text=${encodeURIComponent(cand.name.charAt(0))}'"
+                                    class="w-16 h-16 rounded-xl object-cover border border-slate-700 shadow-md">
+                                <div>
+                                    <h3 class="text-base font-bold text-white group-hover:text-brand-300 transition-colors">${cand.name}</h3>
+                                    <span class="inline-block px-2.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-brand-400 text-[11px] font-medium mt-1">
+                                        ${cand.role}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-slate-400 leading-relaxed mb-4 line-clamp-3">
+                                "${cand.bio}"
+                            </p>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                            <span class="text-[11px] text-slate-500 font-medium">Click card to select</span>
+                            <span class="text-xs font-semibold ${isSelected ? 'text-brand-400' : 'text-slate-400'}">
+                                ${isSelected ? 'Selected' : 'Select'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        window.selectCandidate = function(candId) {
+            window.selectedCandidateId = candId;
+            renderCandidatesGrid();
+            updateSelectedCandidateUI();
+        };
+
+        function updateSelectedCandidateUI() {
+            const btn = document.getElementById('submitVoteBtn');
+            const display = document.getElementById('selectedCandidateName');
+
+            if (window.selectedCandidateId) {
+                const cand = window.candidates.find(c => c.id === window.selectedCandidateId);
+                if (cand) {
+                    display.innerText = cand.name;
+                    display.className = "text-sm font-bold text-emerald-400";
+                    btn.disabled = false;
+                    return;
+                }
+            }
+            display.innerText = "None Selected";
+            display.className = "text-sm font-bold text-slate-500";
+            btn.disabled = true;
+        }
+
+        // CONFIRM & SUBMIT VOTE TO FIREBASE
+        window.confirmAndCastVote = async function() {
+            if (!window.selectedCandidateId || !window.currentVoter) return;
+
+            const btn = document.getElementById('submitVoteBtn');
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Submitting to Cloud...`;
+
+            try {
+                const targetCand = window.candidates.find(c => c.id === window.selectedCandidateId);
+                if (!targetCand) return;
+
+                // 1. Update Candidate Vote Counter in Firestore
+                const candDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'candidates', targetCand.id);
+                await updateDoc(candDocRef, {
+                    votes: (targetCand.votes || 0) + 1
+                });
+
+                // 2. Add Vote Record in Firestore Audit Log
+                const now = new Date();
+                const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+                await addDoc(votesCollectionRef(), {
+                    voterName: window.currentVoter,
+                    votedFor: targetCand.name,
+                    candidateId: targetCand.id,
+                    timestamp: timeStr
+                });
+
+                showToast(`Vote submitted successfully for ${targetCand.name}!`, "success");
+
+                document.getElementById('successVoterName').innerText = window.currentVoter;
+                goToStep(4);
+            } catch (err) {
+                console.error("Error submitting vote:", err);
+                showToast("Failed to cast vote to Cloud. Check connection.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-paper-plane"></i> <span>Submit Live Vote</span>`;
+            }
+        };
+
+        // STEP 4 RESULTS VIEW
+        window.renderResultsView = function() {
+            const totalVotes = window.candidates.reduce((sum, c) => sum + (c.votes || 0), 0);
+            document.getElementById('totalVotesCount').innerText = totalVotes;
+
+            const resultsContainer = document.getElementById('resultsList');
+            const sortedCandidates = [...window.candidates].sort((a, b) => (b.votes || 0) - (a.votes || 0));
+
+            resultsContainer.innerHTML = sortedCandidates.map((cand, idx) => {
+                const candVotes = cand.votes || 0;
+                const percentage = totalVotes > 0 ? Math.round((candVotes / totalVotes) * 100) : 0;
+                const isLeader = idx === 0 && candVotes > 0;
+
+                return `
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-sm text-white">${cand.name}</span>
+                                ${isLeader ? '<span class="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-semibold"><i class="fa-solid fa-crown text-[9px] mr-1"></i> Leading</span>' : ''}
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-bold text-slate-200">${candVotes} votes</span>
+                                <span class="text-xs text-slate-400 ml-1.5">(${percentage}%)</span>
+                            </div>
+                        </div>
+
+                        <div class="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800">
+                            <div class="h-full rounded-full transition-all duration-500 ${isLeader ? 'bg-gradient-to-r from-brand-500 to-emerald-400' : 'bg-slate-700'}" 
+                                style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="mt-1.5 flex justify-between text-[11px] text-slate-500">
+                            <span>${cand.role}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        // ADMIN MANAGEMENT ACTIONS
+        window.handleCreateCandidate = async function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnAddCandSubmit');
+            const name = document.getElementById('newCandName').value.trim();
+            const role = document.getElementById('newCandRole').value.trim();
+            const photo = document.getElementById('newCandPhoto').value.trim();
+            const bio = document.getElementById('newCandBio').value.trim();
+
+            if (!name || !role || !bio) {
+                showToast("Please fill in all candidate fields.", "error");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Saving...`;
+
+            try {
+                await addDoc(candidatesCollectionRef(), {
+                    name,
+                    role,
+                    photo: photo || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
+                    bio,
+                    votes: 0
+                });
+
+                document.getElementById('newCandName').value = '';
+                document.getElementById('newCandRole').value = '';
+                document.getElementById('newCandPhoto').value = '';
+                document.getElementById('newCandBio').value = '';
+
+                showToast(`Candidate "${name}" added to Firebase!`, "success");
+            } catch (err) {
+                console.error("Error creating candidate:", err);
+                showToast("Failed to create candidate.", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i class="fa-solid fa-user-plus"></i> Save Candidate to Firebase`;
+            }
+        };
+
+        window.deleteCandidate = async function(candId) {
+            const cand = window.candidates.find(c => c.id === candId);
+            if (!cand) return;
+
+            if (confirm(`Are you sure you want to delete candidate "${cand.name}" from Cloud Firestore?`)) {
+                try {
+                    const candDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'candidates', candId);
+                    await deleteDoc(candDocRef);
+                    showToast(`Candidate "${cand.name}" deleted.`, "info");
+                } catch(e) {
+                    console.error("Error deleting candidate:", e);
+                    showToast("Failed to delete candidate.", "error");
+                }
+            }
+        };
+
+        window.resetElectionDataPrompt = async function() {
+            if (confirm("RESET ELECTION DATA?\nThis will clear all votes and reset vote counters in Firebase for all connected users.")) {
+                try {
+                    // Reset candidate vote counters
+                    for (const cand of window.candidates) {
+                        const candDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'candidates', cand.id);
+                        await updateDoc(candDocRef, { votes: 0 });
+                    }
+
+                    // Delete vote log documents
+                    for (const vote of window.voterLogs) {
+                        const voteDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'votes', vote.id);
+                        await deleteDoc(voteDocRef);
+                    }
+
+                    showToast("Election data successfully reset across all devices!", "success");
+                    resetToStep(1);
+                } catch (e) {
+                    console.error("Error resetting data:", e);
+                    showToast("Failed to reset election data.", "error");
+                }
+            }
+        };
+
+        // ADMIN UI RENDERERS
+        window.renderAdminCandidatesTable = function() {
+            const tbody = document.getElementById('adminCandidatesTableBody');
+            if (window.candidates.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No candidates registered. Add one above!</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = window.candidates.map(c => `
+                <tr class="hover:bg-slate-900/40">
+                    <td class="px-4 py-3 font-semibold text-white flex items-center gap-2.5">
+                        <img src="${c.photo}" alt="" class="w-8 h-8 rounded-lg object-cover border border-slate-700" 
+                            onerror="this.src='https://placehold.co/80x80/1e293b/818cf8?text=C'">
+                        <span>${c.name}</span>
+                    </td>
+                    <td class="px-4 py-3 text-slate-400">${c.role}</td>
+                    <td class="px-4 py-3 text-slate-400 max-w-xs truncate">${c.bio}</td>
+                    <td class="px-4 py-3 text-center font-bold text-brand-400">${c.votes || 0}</td>
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="deleteCandidate('${c.id}')" class="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-xs font-medium transition-all">
+                            <i class="fa-solid fa-trash-can mr-1"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        };
+
+        window.renderAdminVoterLogs = function() {
+            const tbody = document.getElementById('adminVoterLogBody');
+            if (window.voterLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">No voter records logged yet.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = window.voterLogs.map((log, idx) => `
+                <tr class="hover:bg-slate-900/40">
+                    <td class="px-4 py-3 text-slate-500 font-mono">${idx + 1}</td>
+                    <td class="px-4 py-3 font-semibold text-slate-200">${log.voterName}</td>
+                    <td class="px-4 py-3 text-emerald-400 font-medium">${log.votedFor}</td>
+                    <td class="px-4 py-3 text-right text-slate-500 font-mono text-[11px]">${log.timestamp || 'Just now'}</td>
+                </tr>
+            `).join('');
+        };
+
+        // FIREBASE CONFIG MODAL LOGIC
+        window.openConfigModal = function() {
+            document.getElementById('configJsonInput').value = JSON.stringify(firebaseConfig, null, 2);
+            document.getElementById('configModal').classList.remove('hidden');
+        };
+
+        window.closeConfigModal = function() {
+            document.getElementById('configModal').classList.add('hidden');
+        };
+
+        window.handleSaveConfig = function(e) {
+            e.preventDefault();
+            const val = document.getElementById('configJsonInput').value.trim();
+            try {
+                const parsed = JSON.parse(val);
+                if (!parsed.projectId || !parsed.apiKey) {
+                    throw new Error("Missing required config fields");
+                }
+                localStorage.setItem('votex_custom_firebase_config', JSON.stringify(parsed));
+                showToast("Firebase Config saved! Reloading application...", "success");
+                setTimeout(() => location.reload(), 1000);
+            } catch (err) {
+                showToast("Invalid JSON syntax or missing Firebase keys.", "error");
+            }
+        };
+
+        window.restoreDefaultConfig = function() {
+            localStorage.removeItem('votex_custom_firebase_config');
+            showToast("Restored default configuration. Reloading...", "info");
+            setTimeout(() => location.reload(), 800);
+        };
+    </script>
+
+    <!-- ================= NON-MODULE UI CONTROLLER SCRIPT ================= -->
+    <script>
+        function updateStepView(step) {
+            window.currentStep = step;
+
+            ['step1', 'step2', 'step3', 'step4'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+
+            document.getElementById(`step${step}`).classList.remove('hidden');
+
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById(`step${i}Indicator`);
+                if (!el) continue;
+                
+                const badge = el.querySelector('span:first-child');
+                if (i === step) {
+                    el.className = "flex items-center gap-1.5 text-brand-400 font-semibold";
+                    badge.className = "w-5 h-5 rounded-full bg-brand-600/30 border border-brand-500 text-brand-400 flex items-center justify-center text-[10px]";
+                } else if (i < step) {
+                    el.className = "flex items-center gap-1.5 text-emerald-400 font-medium";
+                    badge.className = "w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500 text-emerald-400 flex items-center justify-center text-[10px]";
+                    badge.innerHTML = '<i class="fa-solid fa-check text-[9px]"></i>';
+                } else {
+                    el.className = "flex items-center gap-1.5 text-slate-500 font-medium";
+                    badge.className = "w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px]";
+                    badge.innerText = i;
+                }
+            }
+        }
+
+        function goToStep(step) {
+            if (step === 3 && window.renderCandidatesGrid) {
+                window.renderCandidatesGrid();
+            } else if (step === 4 && window.renderResultsView) {
+                window.renderResultsView();
+            }
+            updateStepView(step);
+        }
+
+        function resetToStep(step) {
+            if (step === 1) {
+                document.getElementById('voterName').value = '';
+                window.selectedCandidateId = null;
+            }
+            goToStep(step);
+        }
+
+        function openAdminModal() {
+            if (window.isAdminLoggedIn) {
+                openAdminDashboard();
+            } else {
+                document.getElementById('adminLoginModal').classList.remove('hidden');
+            }
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminLoginModal').classList.add('hidden');
+        }
+
+        function handleAdminLogin(e) {
+            e.preventDefault();
+            const pass = document.getElementById('adminPass').value;
+            const err = document.getElementById('adminLoginError');
+
+            if (pass === 'admin123') {
+                window.isAdminLoggedIn = true;
+                err.classList.add('hidden');
+                closeAdminModal();
+                updateAdminNavButton();
+                openAdminDashboard();
+                showToast("Authenticated as Administrator.", "success");
+            } else {
+                err.classList.remove('hidden');
+            }
+        }
+
+        function updateAdminNavButton() {
+            const btnText = document.getElementById('adminBtnText');
+            if (window.isAdminLoggedIn) {
+                btnText.innerText = "Admin Control";
+            } else {
+                btnText.innerText = "Admin Portal";
+            }
+        }
+
+        function openAdminDashboard() {
+            if (window.renderAdminCandidatesTable) window.renderAdminCandidatesTable();
+            if (window.renderAdminVoterLogs) window.renderAdminVoterLogs();
+            document.getElementById('adminDashboardModal').classList.remove('hidden');
+        }
+
+        function closeAdminDashboard() {
+            document.getElementById('adminDashboardModal').classList.add('hidden');
+        }
+
+        function logoutAdmin() {
+            window.isAdminLoggedIn = false;
+            updateAdminNavButton();
+            closeAdminDashboard();
+            showToast("Logged out of Admin Portal.", "info");
+        }
+
+        function switchAdminTab(tab) {
+            const btnCand = document.getElementById('tabBtnCandidates');
+            const btnVot = document.getElementById('tabBtnVoters');
+            const tabCand = document.getElementById('tabCandidates');
+            const tabVot = document.getElementById('tabVoters');
+
+            if (tab === 'candidates') {
+                tabCand.classList.remove('hidden');
+                tabVot.classList.add('hidden');
+                btnCand.className = "py-3 px-4 text-xs font-semibold text-brand-400 border-b-2 border-brand-500 flex items-center gap-2";
+                btnVot.className = "py-3 px-4 text-xs font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2";
+            } else {
+                tabCand.classList.add('hidden');
+                tabVot.classList.remove('hidden');
+                btnVot.className = "py-3 px-4 text-xs font-semibold text-brand-400 border-b-2 border-brand-500 flex items-center gap-2";
+                btnCand.className = "py-3 px-4 text-xs font-semibold text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2";
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let bgBorder = 'bg-slate-900 border-slate-700 text-slate-200';
+            let icon = '<i class="fa-solid fa-circle-info text-brand-400"></i>';
+
+            if (type === 'success') {
+                bgBorder = 'bg-slate-900 border-emerald-500/40 text-emerald-200';
+                icon = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+            } else if (type === 'error') {
+                bgBorder = 'bg-slate-900 border-rose-500/40 text-rose-200';
+                icon = '<i class="fa-solid fa-circle-exclamation text-rose-400"></i>';
+            }
+
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-xl text-xs font-medium backdrop-blur-md pointer-events-auto transition-all duration-300 transform translate-x-5 opacity-0 ${bgBorder}`;
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-x-5', 'opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-5');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
